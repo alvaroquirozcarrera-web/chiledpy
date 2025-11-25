@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Service Blueprint (Web) | Yachay Mikuy</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+
+        :root {
+            --color-blue: #0066cc;
+            --color-red: #e63946;
+            --color-white: #FFFFFF;
+            --color-bg: #f8f9fa;
+            --color-text: #212529;
+            --color-light-gray: #e9ecef;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--color-bg);
+            color: var(--color-text);
+            margin: 0;
+            padding: 2em;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: auto;
+            padding: 30px;
+            background-color: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2em;
+            padding-bottom: 20px;
+            border-bottom: 2px solid var(--color-blue);
+        }
+
+        .header h1 {
+            color: var(--color-blue);
+            font-size: 2.8em;
+            margin: 0;
+            font-weight: 700;
+        }
+
+        .header p {
+            color: var(--color-red);
+            font-size: 1.2em;
+            font-style: italic;
+            margin-top: 10px;
+        }
+
+        .blueprint-grid {
+            display: grid;
+            grid-template-columns: 1fr repeat(6, 1.5fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .category-header, .stage-header {
+            font-weight: 700;
+            padding: 15px;
+            text-align: center;
+            border-radius: 8px;
+        }
+
+        .category-header {
+            background-color: var(--color-blue);
+            color: var(--color-white);
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            transform: rotate(180deg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2em;
+        }
+
+        .stage-header {
+            background-color: transparent;
+            color: var(--color-blue);
+            font-size: 1.1em;
+            border-bottom: 3px solid var(--color-blue);
+            padding-bottom: 10px;
+        }
+
+        .line-divider {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 10px;
+            font-weight: 600;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+
+        .line-visibility {
+            color: var(--color-red);
+            background-color: #fff0f0;
+            border-top: 2px dashed var(--color-red);
+            border-bottom: 2px dashed var(--color-red);
+        }
+
+        .card {
+            background: var(--color-white);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            text-align: center;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 80px;
+            opacity: 0;
+            border: 1px solid var(--color-light-gray);
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0, 102, 204, 0.12);
+            background-color: #f8f9ff;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Modal (Ventana flotante) */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.4s ease, visibility 0.4s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background: var(--color-white);
+            padding: 30px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+            transform: scale(0.8);
+            transition: transform 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+        }
+        
+        .modal-overlay.active .modal-content {
+             transform: scale(1);
+        }
+
+        .modal-title {
+            font-size: 1.8em;
+            font-weight: 700;
+            color: var(--color-blue);
+            margin-top: 0;
+            margin-bottom: 15px;
+        }
+
+        .modal-description {
+            font-size: 1.1em;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .modal-category {
+            font-weight: 600;
+            color: var(--color-red);
+            margin-bottom: 10px;
+        }
+        
+        .download-btn {
+            display: block;
+            width: 220px;
+            margin: 2.5em auto;
+            padding: 15px 25px;
+            background-color: var(--color-red);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(230, 57, 70, 0.2);
+        }
+        
+        .download-btn:hover {
+            background-color: #d62828;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(230, 57, 70, 0.3);
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .loading-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid var(--color-light-gray);
+            border-top: 5px solid var(--color-blue);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            margin-top: 20px;
+            font-size: 1.2em;
+            color: var(--color-blue);
+            font-weight: 600;
+        }
+
+        /* Estilos para notificaciones */
+        .notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: 5px;
+            color: white;
+            font-weight: 600;
+            z-index: 3000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transform: translateX(400px);
+            transition: transform 0.3s ease-out;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success {
+            background-color: #28a745;
+        }
+
+        .notification.error {
+            background-color: #dc3545;
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="container" id="blueprint-container">
+    <div class="header" id="header-section">
+        <h1>Service Blueprint (Plataforma Web)</h1>
+        <p>Nutrición inteligente, futuro brillante</p>
+    </div>
+
+    <div class="blueprint-grid" id="blueprint-grid">
+        <div></div> 
+        <div class="stage-header">1. Descubrir</div>
+        <div class="stage-header">2. Acceder a la Web</div>
+        <div class="stage-header">3. Registrarse</div>
+        <div class="stage-header">4. Uso Diario</div>
+        <div class="stage-header">5. Monitorear</div>
+        <div class="stage-header">6. Evaluar</div>
+
+        <div class="category-header">Evidencia Física</div>
+        <div class="card" data-title="Publicidad / Enlace" data-category="Evidencia Física" data-description="Anuncios en redes sociales, un enlace compartido o un resultado en un motor de búsqueda como Google.">Publicidad</div>
+        <div class="card" data-title="Página Web (Landing)" data-category="Evidencia Física" data-description="La página de inicio de Yachay Mikuy que presenta la propuesta de valor, beneficios y testimonios.">Página Web</div>
+        <div class="card" data-title="Perfil en la Plataforma" data-category="Evidencia Física" data-description="El email de bienvenida, la interfaz de creación de perfil del niño y el panel de usuario inicial.">Perfil en Plataforma</div>
+        <div class="card" data-title="interfaz Principal" data-category="Evidencia Física" data-description="El plan de comidas diario/semanal, el avatar interactivo 'Mikuycito' y los juegos educativos.">Interfaz Principal</div>
+        <div class="card" data-title="Reportes y Notificaciones" data-category="Evidencia Física" data-description="Emails con reportes, notificaciones en la web, y gráficos de progreso visuales dentro del dashboard.">Reportes</div>
+        <div class="card" data-title="Soporte y Resultados" data-category="Evidencia Física" data-description="La mejora visible en la salud y energía del niño. El canal de soporte (chat/email) dentro de la plataforma.">Resultados</div>
+
+        <div class="category-header">Acciones del Usuario</div>
+        <div class="card" data-title="Descubrir" data-category="Acciones del Usuario" data-description="El padre o cuidador se encuentra por primera vez con Yachay Mikuy, ya sea por recomendación, publicidad o búsqueda activa.">Descubrir</div>
+        <div class="card" data-title="Visitar y Explorar" data-category="Acciones del Usuario" data-description="El usuario hace clic en el enlace y llega al sitio web. Lee la información, explora las características y decide registrarse.">Visitar Web</div>
+        <div class="card" data-title="Registrarse" data-category="Acciones del Usuario" data-description="Crea una cuenta, ingresa los datos de su hijo (edad, peso, etc.) y completa el proceso de onboarding y pago.">Registrarse</div>
+        <div class="card" data-title="Uso Diario" data-category="Acciones del Usuario" data-description="Inicia sesión en la plataforma, registra las comidas, sigue el plan nutricional, y utiliza los juegos con el niño.">Uso Diario</div>
+        <div class="card" data-title="Monitorear" data-category="Acciones del Usuario" data-description="Revisa activamente los reportes de progreso en el dashboard, observa los cambios y ajusta el plan si se recomienda.">Monitorear</div>
+        <div class="card" data-title="Evaluar y Contactar" data-category="Acciones del Usuario" data-description="Comprueba los resultados de salud, resuelve dudas a través del soporte y evalúa la efectividad del servicio.">Evaluar</div>
+
+        <div class="line-divider line-visibility">Línea de Visibilidad (Separa lo que el usuario ve de lo que no ve)</div>
+
+        <div class="category-header">Front-stage (Plataforma)</div>
+        <div class="card" data-title="Mostrar Valor" data-category="Front-stage (Plataforma)" data-description="El contenido de la web comunica claramente sus beneficios: planes personalizados por IA, recuperación rápida, etc.">Mostrar Valor</div>
+        <div class="card" data-title="Optimizar Página" data-category="Front-stage (Plataforma)" data-description="La web es rápida, clara, fácil de navegar y con un llamado a la acción (CTA) visible para el registro.">Optimizar Página</div>
+        <div class="card" data-title="Guiar Registro" data-category="Front-stage (Plataforma)" data-description="Un tutorial interactivo (onboarding) guía al usuario paso a paso en el registro y la configuración inicial.">Guiar Registro</div>
+        <div class="card" data-title="Presentar Plan" data-category="Front-stage (Plataforma)" data-description="La interfaz principaal de la plataforma muestra de forma clara y atractiva el plan de comidas, el avatar y los juegos interactivos.">Presentar Plan</div>
+        <div class="card" data-title="Enviar Alertas" data-category="Front-stage (Plataforma)" data-description="EEl sistema envia notificaciones (emails pushs  y mensajes) con recordatorios, consejos y gráficos de avance">Enviar Alertas</div>
+        <div class="card" data-title="Ofrecer Ayuda" data-category="Front-stage (Plataforma)" data-description="La plataforma dispone de una comunidad de apoyo, una secciòn de preguntas frecuentes y un canal de contacto accesible a través de un chatbox">Ofrecer Ayuda</div>
+        
+        <div class="category-header">Back-stage (Operaciones)</div>
+        <div class="card" data-title="Monitorear Campañas" data-category="Back-stage (Operaciones)" data-description="El equipo de marketing analiza la efectividad de los anuncios y el tráfico web.">Monitorear Campañas</div>
+        <div class="card" data-title="Mantener Servidor" data-category="Back-stage (Operaciones)" data-description="El equipo técnico asegura que el sitio web esté online 24/7, sea rápido y seguro (con certificado SSL).">Mantener Servidor</div>
+        <div class="card" data-title="Procesar Datos con IA" data-category="Back-stage (Operaciones)" data-description="La IA procesa los datos iniciales del niño para generar el primer plan nutricional personalizado.">Procesar Datos IA</div>
+        <div class="card" data-title="Analizar Comidas" data-category="Back-stage (Operaciones)" data-description="El algoritmo de reconocimiento de imágenes y análisis de datos procesa la información de las comidas registradas y emite recomendaciones nutricionales.">Analizar Comidas</div>
+        <div class="card" data-title="Generar Reportes" data-category="Back-stage (Operaciones)" data-description="El sistema genera automáticamente los reportes de progreso y las notificaciones personalizadas.">Generar Reportes</div>
+        <div class="card" data-title="Responder Consultas" data-category="Back-stage (Operaciones)" data-description="El equipo de soporte técnico y el chatbox reciben y responden las consultas de los usuarios. Además, se desarrollan foros de discusión  en  comunidad.">Responder Consultas</div>
+        
+        <div class="category-header">Procesos de Soporte</div>
+        <div class="card" data-title="Crear Alianzas" data-category="Procesos de Soporte" data-description="Desarrollar un plan de marketing y establecer alianzas estratégicas con instituciones o programas afines">Crear Alianzas</div>
+        <div class="card" data-title="Optimización SEO" data-category="Procesos de Soporte" data-description="Realizar optimización para motores de búsqueda (SEO) y mantener la infraestructura del servidor web.">Optimización SEO</div>
+        <div class="card" data-title="Gestionar Pagos" data-category="Procesos de Soporte" data-description="Administrar el sistema de pagos recurrentes y la base de datos central de usuarios de forma segura.">Gestionar Pagos</div>
+        <div class="card" data-title="Mejorar Algoritmo" data-category="Procesos de Soporte" data-description="Validar y mejorar continuamente el algoritmo de IA con la supervisión de nutricionistas profesionales.">Mejorar Algoritmo</div>
+        <div class="card" data-title="Analizar Métricas" data-category="Procesos de Soporte" data-description="El equipo de producto analiza las métricas de uso de la plataforma para identificar áreas de mejora.">Analizar Métricas</div>
+        <div class="card" data-title="Gestionar Alianzas B2B" data-category="Procesos de Soporte" data-description="Coordinar con nutricionistas para casos complejos y gestionar la relación con instituciones aliadas.">Gestionar Alianzas B2B</div>
+    </div>
+</div>
+
+<button id="download-button" class="download-btn">Descargar como PDF</button>
+
+<div class="modal-overlay" id="modal-overlay">
+    <div class="modal-content">
+        <h2 class="modal-title" id="modal-title"></h2>
+        <p class="modal-category" id="modal-category"></p>
+        <p class="modal-description" id="modal-description"></p>
+    </div>
+</div>
+
+<div class="loading-overlay" id="loading-overlay">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">Generando PDF de alta calidad...</div>
+</div>
+
+<script>
+    window.jsPDF = window.jspdf.jsPDF;
+
+    // Función para mostrar notificaciones
+    function showNotification(message, type) {
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        notification.textContent = message;
+        document.body.appendChild(notification);
+        
+        setTimeout(() => notification.classList.add('show'), 100);
+        
+        setTimeout(() => {
+            notification.classList.remove('show');
+            setTimeout(() => document.body.removeChild(notification), 300);
+        }, 3000);
+    }
+
+    // Modal functionality
+    const cards = document.querySelectorAll('.card');
+    const modalOverlay = document.getElementById('modal-overlay');
+    const modalTitle = document.getElementById('modal-title');
+    const modalCategory = document.getElementById('modal-category');
+    const modalDescription = document.getElementById('modal-description');
+    const loadingOverlay = document.getElementById('loading-overlay');
+
+    cards.forEach((card, index) => {
+        card.style.animationDelay = `${index * 0.05}s`;
+        card.style.animation = 'fadeIn 0.5s ease forwards';
+        card.addEventListener('click', () => {
+            modalTitle.textContent = card.dataset.title;
+            modalCategory.textContent = `Categoría: ${card.dataset.category}`;
+            modalDescription.textContent = card.dataset.description;
+            modalOverlay.classList.add('active');
+        });
+    });
+
+    modalOverlay.addEventListener('click', (event) => {
+        if (event.target === modalOverlay) {
+            modalOverlay.classList.remove('active');
+        }
+    });
+
+    // PDF Download functionality - VERSIÓN MEJORADA PARA ALTA CALIDAD
+    document.getElementById('download-button').addEventListener('click', function () {
+        loadingOverlay.classList.add('active');
+
+        // 1. Clonar el contenedor principal para no afectar el DOM original
+        const element = document.getElementById('blueprint-container');
+        const printContainer = element.cloneNode(true);
+        
+        // 2. Aplicar estilos optimizados para la impresión/PDF
+        printContainer.style.position = 'absolute';
+        printContainer.style.left = '-9999px';
+        printContainer.style.top = '0';
+        printContainer.style.width = '1400px'; // Ancho fijo para consistencia
+        printContainer.style.backgroundColor = '#FFFFFF';
+        printContainer.style.boxShadow = 'none'; // Quitar sombras
+        printContainer.style.border = 'none';
+
+        // Quitar bordes a las tarjetas para un look más limpio en PDF
+        const cardsInClone = printContainer.querySelectorAll('.card');
+        cardsInClone.forEach(card => {
+            card.style.border = 'none';
+            card.style.boxShadow = 'none';
+        });
+
+        document.body.appendChild(printContainer);
+
+        // 3. Configurar html2canvas con alta resolución
+        html2canvas(printContainer, {
+            scale: 3, // ¡MUY IMPORTANTE! Escala alta para mayor nitidez
+            useCORS: true,
+            logging: false, // Poner a true para depurar si es necesario
+            width: 1400,
+            height: printContainer.scrollHeight,
+            backgroundColor: '#FFFFFF' // Fondo blanco garantizado
+        }).then(canvas => {
+            // 4. Limpiar el DOM
+            document.body.removeChild(printContainer);
+            loadingOverlay.classList.remove('active');
+
+            // 5. Crear el PDF
+            const imgData = canvas.toDataURL('image/png', 1.0); // Calidad máxima
+            const pdf = new jsPDF({
+                orientation: 'landscape',
+                unit: 'px',
+                format: [canvas.width, canvas.height] // Usar las dimensiones del canvas
+            });
+            
+            // 6. Añadir la imagen al PDF. Ocupará toda la página.
+            pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+            
+            // 7. Guardar el PDF
+            pdf.save('Service_Blueprint_Web_Yachay_Mikuy.pdf');
+            
+            showNotification('PDF descargado con éxito', 'success');
+
+        }).catch(error => {
+            console.error('Error al generar el PDF:', error);
+            document.body.removeChild(printContainer);
+            loadingOverlay.classList.remove('active');
+            showNotification('Error al generar el PDF. Inténtalo de nuevo.', 'error');
+        });
+    });
+
+</script>
+
+</body>
+</html>
